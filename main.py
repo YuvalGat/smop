@@ -60,19 +60,37 @@ def split_rectangle(vertices, w, h):
     return split_vertices
 
 
+class Explosion:
+    def __init__(self, origin, fissure, shrapnel_count):
+        self.origin = origin
+        self.fissure = fissure
+        self.shrapnel_count = shrapnel_count
+
+    def explode_on(self, vertices):
+        lam = get_poisson_parameter_on_rectangle(self.origin, vertices, self.fissure, self.shrapnel_count)
+        return poisson(lam)
+
+    def explode_on_split_surface(self, split_vertices):
+        dist = [[self.explode_on(v) for v in row] for row in split_vertices]
+        return dist
+
+
 if __name__ == '__main__':
-    origin = np.array([0, 0, 0])
+    origin1 = np.array([1, 1, 0])
+    origin2 = np.array([0, 0, 0])
     vertices = [np.array([-1, 1, 1]), np.array([-1, -1, 1]), np.array([1, 1, 1]), np.array([1, -1, 1])]
     a, b, c, d = vertices
     N = 6e9
 
     acc = 100
+    explosion1 = Explosion(origin1, 4 * np.pi, N)
+    explosion2 = Explosion(origin2, 2 * np.pi, N / 2)
     split_vertices = split_rectangle(vertices, acc, acc)
-    lams = [[get_poisson_parameter_on_rectangle(origin, v, 4 * np.pi, N) for v in split_vertices[row]] for row in
-            range(acc)]
+
+    dist1 = explosion1.explode_on_split_surface(split_vertices)
+    dist2 = explosion2.explode_on_split_surface(split_vertices)
+    dist = np.add(dist1, dist2)
     print(get_solid_angle_by_triangular_surface(vertices[0], vertices[1], vertices[2]))
-    # dist = np.add(0, np.array([poisson(lams) for i in range(1000)]).sum(axis=0))
-    dist = poisson(lams)
     plt.imshow(dist)
     plt.colorbar()
     plt.show()
