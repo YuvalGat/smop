@@ -2,6 +2,7 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import matplotlib.pyplot as plt
+from numba import njit
 
 """
 a ---- c
@@ -12,8 +13,9 @@ b ---- d
 poisson = np.random.poisson
 
 
+# @njit
 def get_solid_angle_by_triangular_surface(a, b, c):
-    triple_product = np.dot(a, np.cross(b, c))
+    triple_product = np.linalg.det(np.dstack([a, b, c]))[0]
     a_size = np.linalg.norm(a)
     b_size = np.linalg.norm(b)
     c_size = np.linalg.norm(c)
@@ -72,25 +74,52 @@ class Explosion:
 
     def explode_on_split_surface(self, split_vertices):
         dist = [[self.explode_on(v) for v in row] for row in split_vertices]
+        dist = np.rot90(dist)
         return dist
 
 
+class Missile:
+    def __init__(self, warhead_center, direction, warhead_length, warhead_radius, homing_head_length):
+        self.warhead_center = warhead_center
+        self.direction = direction / np.linalg.norm(direction)
+        self.warhead_length = warhead_length
+        self.warhead_radius = warhead_radius
+        self.homing_head_length = homing_head_length
+
+    def get_projection_coordinates(self, explosion):
+        c = self.warhead_center
+        v = explosion.origin - c
+        u = self.direction
+        perp = v - np.dot(v, u) * u
+        perp /= np.linalg.norm(perp)
+        p = np.cross(perp, u) * self.warhead_radius
+        l = u * self.warhead_length / 2
+        return {'warhead_coords': [c + p + l, c - p + l, c + p - l, c - p - l],
+                'homing_head_coords': [c + p + l, c - p + l, c + l + u * self.homing_head_length]}
+
+
+def get_minimal_penetration_velocity(m, A, d, theta, b, n):
+    # Ricckihazzi formula
+    return b / np.sqrt(m) * np.sqrt(np.power(A, 1.5) * np.power(d / (np.sqrt(A) * np.cos(theta)), n))
+
+
+def get_penetration_velocity(vs, A, d, m, theta, C, alpha, beta, gamma, lam):
+    # Thor formula
+    return vs - np.pow(10, C) * np.power(A * d, alpha) * np.power(m, beta) * np.power(vs, lam) / np.power(np.cos(theta),
+                                                                                                          gamma)
+
+
 if __name__ == '__main__':
-    origin1 = np.array([1, 1, 0])
-    origin2 = np.array([0, 0, 0])
-    vertices = [np.array([-1, 1, 1]), np.array([-1, -1, 1]), np.array([1, 1, 1]), np.array([1, -1, 1])]
-    a, b, c, d = vertices
+    origin = np.array([10, -1, 1])
     N = 6e9
 
-    acc = 100
-    explosion1 = Explosion(origin1, 4 * np.pi, N)
-    explosion2 = Explosion(origin2, 2 * np.pi, N / 2)
+    acc = 50
+    explosion = Explosion(origin, 4 * np.pi, N)
+    m = Missile(np.array([0, 0, 1]), np.array([-1, 0, 0]), 2, 0.3, 1)
+    vertices = m.get_projection_coordinates(explosion)['warhead_coords']
+    print(vertices)
     split_vertices = split_rectangle(vertices, acc, acc)
-
-    dist1 = explosion1.explode_on_split_surface(split_vertices)
-    dist2 = explosion2.explode_on_split_surface(split_vertices)
-    dist = np.add(dist1, dist2)
-    print(get_solid_angle_by_triangular_surface(vertices[0], vertices[1], vertices[2]))
+    dist = explosion.explode_on_split_surface(split_vertices)
     plt.imshow(dist)
     plt.colorbar()
     plt.show()
