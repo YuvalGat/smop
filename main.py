@@ -63,17 +63,28 @@ def split_rectangle(vertices, w, h):
 
 
 class Explosion:
-    def __init__(self, origin, fissure, shrapnel_count):
+    def __init__(self, origin, fissure, shrapnel_count, direction, sdf, svf):
         self.origin = origin
         self.fissure = fissure
         self.shrapnel_count = shrapnel_count
+        self.direction = direction / np.linalg.norm(direction)
+        self.sdf = sdf  # Shrapnel density function
+        self.svf = svf  # Shrapnel velocity function
 
     def explode_on(self, vertices):
-        lam = get_poisson_parameter_on_rectangle(self.origin, vertices, self.fissure, self.shrapnel_count)
-        return poisson(lam)
+        theta = self.get_angle_off_vertex(vertices[0])
+        lam = get_poisson_parameter_on_rectangle(self.origin, vertices, self.fissure, self.shrapnel_count) * self.sdf(
+            theta)
+        return poisson(lam), self.svf(theta)
+
+    def get_angle_off_vertex(self, vertex):
+        theta = np.arcsin(np.dot(vertex - origin, self.direction) / np.linalg.norm(vertex - origin))
+        if theta < 0:
+            theta += np.pi
+        return theta
 
     def explode_on_split_surface(self, split_vertices):
-        dist = [[self.explode_on(v) for v in row] for row in split_vertices]
+        dist = [[self.explode_on(v)[0] for v in row] for row in split_vertices]
         dist = np.rot90(dist)
         return dist
 
@@ -109,12 +120,20 @@ def get_penetration_velocity(vs, A, d, m, theta, C, alpha, beta, gamma, lam):
                                                                                                           gamma)
 
 
+def sdf(theta):
+    if np.pi / 6 < theta < np.pi / 4:
+        return 1
+    else:
+        return 0
+
+
 if __name__ == '__main__':
-    origin = np.array([10, -1, 1])
-    N = 6e9
+    origin = np.array([0, -0.3, 1])
+    N = 1000e4
 
     acc = 50
-    explosion = Explosion(origin, 4 * np.pi, N)
+    explosion = Explosion(origin, 4 * np.pi, N, np.array([0, 1, 0]),
+                          sdf, lambda x: 10)
     m = Missile(np.array([0, 0, 1]), np.array([-1, 0, 0]), 2, 0.3, 1)
     vertices = m.get_projection_coordinates(explosion)['warhead_coords']
     print(vertices)
