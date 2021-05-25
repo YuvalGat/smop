@@ -139,18 +139,21 @@ class Missile:
         second_vector = normalize(np.cross(first_vector, u))
         n = 20
         for theta in np.linspace(0, np.pi * 2, n):
-            point = c + u * self.warhead_length + (first_vector * np.cos(theta) + second_vector * np.sin(theta))*self.warhead_radius
+            point = c + u * self.warhead_length + (
+                    first_vector * np.cos(theta) + second_vector * np.sin(theta)) * self.warhead_radius
             x.append(point[0])
             y.append(point[1])
             z.append(point[2])
         for theta in np.linspace(0, np.pi * 2, n):
-            point = c - u * self.warhead_length + (first_vector * np.cos(theta) + second_vector * np.sin(theta))*self.warhead_radius
+            point = c - u * self.warhead_length + (
+                    first_vector * np.cos(theta) + second_vector * np.sin(theta)) * self.warhead_radius
             x.append(point[0])
             y.append(point[1])
             z.append(point[2])
-        triangles = np.asarray([[0, i, i + 1] for i in range(1, n)] + [[i+1, i, i+n] for i in range(1, n)] +
-                               [[i+1, i+n, i+n+1] for i in range(1, n)] + [[i, i + 1, i+int(n/2)] for i in range(n, int(3 * n / 2) + 1)] +
-                               [[i, i+int(n/2), i+int(n/2) + 1] for i in range(n, int(3 * n / 2))])
+        triangles = np.asarray([[0, i, i + 1] for i in range(1, n)] + [[i + 1, i, i + n] for i in range(1, n)] +
+                               [[i + 1, i + n, i + n + 1] for i in range(1, n)] + [[i, i + 1, i + int(n / 2)] for i in
+                                                                                   range(n, int(3 * n / 2) + 1)] +
+                               [[i, i + int(n / 2), i + int(n / 2) + 1] for i in range(n, int(3 * n / 2))])
         tri = mtri.Triangulation(x, y, triangles)
         return tri, z
 
@@ -160,14 +163,33 @@ class Missile:
 
 
 def get_minimal_penetration_velocity(m, A, d, theta, b, n):
-    # Ricckihazzi formula
-    return b / np.sqrt(m) * np.sqrt(np.power(A, 1.5) * np.power(d / (np.sqrt(A) * np.cos(theta)), n))
+    """
+    Ricckihazzi formula
+    :param m: Mass of fragment in gram
+    :param A: Cross-area of fragment in mm^2
+    :param d: Penetrated surface thickness in mm
+    :param theta: Penetration angle
+    :return: Minimal velocity required to penetrate surface
+    """
+    return b / np.sqrt(m) * np.sqrt(np.power(np.power(A, 1.5) * (d / (np.sqrt(A) * np.cos(theta))), n))
 
 
 def get_penetration_velocity(vs, A, d, m, theta, C, alpha, beta, gamma, lam):
-    # Thor formula
-    return vs - np.pow(10, C) * np.power(A * d, alpha) * np.power(m, beta) * np.power(vs, lam) / np.power(np.cos(theta),
-                                                                                                          gamma)
+    """
+    Thor formula
+    :param vs: Entry velocity in m/s
+    :param A: Cross-area of fragment in cm^2
+    :param d: Penetrated surface thickness in mm
+    :param m: Mass of fragment in gram
+    :param theta: Penetration angle
+    :return: Velocity of exiting fragment
+    """
+    m_grain = m / 15.432
+    A_in2 = A / 6452
+    d_in = d / 25.4
+    return vs - np.power(10, C) * np.power(A_in2 * d_in, alpha) * np.power(m_grain, beta) * np.power(vs,
+                                                                                                     lam) / np.power(
+        np.cos(theta), gamma)
 
 
 def sdf(theta):
