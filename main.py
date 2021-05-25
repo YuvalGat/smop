@@ -2,6 +2,7 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import matplotlib.pyplot as plt
+import matplotlib.tri as mtri
 from numba import njit
 
 """
@@ -11,6 +12,22 @@ b ---- d
 """
 
 poisson = np.random.poisson
+
+
+def normalize(v):
+    if not any(v):
+        return v
+    else:
+        return v / np.linalg.norm(v)
+
+
+def perpendicular_vector(v):
+    if v[1] == 0 and v[2] == 0:
+        if v[0] == 0:
+            raise ValueError('zero vector')
+        else:
+            return np.cross(v, [0, 1, 0])
+    return np.cross(v, [1, 0, 0])
 
 
 # @njit
@@ -67,7 +84,7 @@ class Explosion:
         self.origin = origin
         self.fissure = fissure
         self.shrapnel_count = shrapnel_count
-        self.direction = direction / np.linalg.norm(direction)
+        self.direction = normalize(direction)
         self.sdf = sdf  # Shrapnel density function
         self.svf = svf  # Shrapnel velocity function
 
@@ -78,7 +95,7 @@ class Explosion:
         return poisson(lam), self.svf(theta)
 
     def get_angle_off_vertex(self, vertex):
-        theta = np.arcsin(np.dot(vertex - origin, self.direction) / np.linalg.norm(vertex - origin))
+        theta = np.arcsin(np.dot(vertex - self.origin, self.direction) / np.linalg.norm(vertex - self.origin))
         if theta < 0:
             theta += np.pi
         return theta
@@ -88,11 +105,15 @@ class Explosion:
         dist = np.rot90(dist)
         return dist
 
+    def plot_explosion(self, ax):
+        explosion_missile = Missile(self.origin - self.direction, self.direction, 0.7, 0.2, 0.3)
+        explosion_missile.plot_missile(ax, c='b')
+
 
 class Missile:
     def __init__(self, warhead_center, direction, warhead_length, warhead_radius, homing_head_length):
         self.warhead_center = warhead_center
-        self.direction = direction / np.linalg.norm(direction)
+        self.direction = normalize(direction)
         self.warhead_length = warhead_length
         self.warhead_radius = warhead_radius
         self.homing_head_length = homing_head_length
@@ -101,12 +122,41 @@ class Missile:
         c = self.warhead_center
         v = explosion.origin - c
         u = self.direction
-        perp = v - np.dot(v, u) * u
-        perp /= np.linalg.norm(perp)
+        perp = normalize(v - np.dot(v, u) * u)
         p = np.cross(perp, u) * self.warhead_radius
         l = u * self.warhead_length / 2
         return {'warhead_coords': [c + p + l, c - p + l, c + p - l, c - p - l],
                 'homing_head_coords': [c + p + l, c - p + l, c + l + u * self.homing_head_length]}
+
+    def get_missile_coordinates(self):
+        u = self.direction
+        c = self.warhead_center
+        homing_head = c + u * (self.warhead_length + self.homing_head_length)
+        x = [homing_head[0]]
+        y = [homing_head[1]]
+        z = [homing_head[2]]
+        first_vector = normalize(perpendicular_vector(u))
+        second_vector = normalize(np.cross(first_vector, u))
+        n = 20
+        for theta in np.linspace(0, np.pi * 2, n):
+            point = c + u * self.warhead_length + (first_vector * np.cos(theta) + second_vector * np.sin(theta))*self.warhead_radius
+            x.append(point[0])
+            y.append(point[1])
+            z.append(point[2])
+        for theta in np.linspace(0, np.pi * 2, n):
+            point = c - u * self.warhead_length + (first_vector * np.cos(theta) + second_vector * np.sin(theta))*self.warhead_radius
+            x.append(point[0])
+            y.append(point[1])
+            z.append(point[2])
+        triangles = np.asarray([[0, i, i + 1] for i in range(1, n)] + [[i+1, i, i+n] for i in range(1, n)] +
+                               [[i+1, i+n, i+n+1] for i in range(1, n)] + [[i, i + 1, i+int(n/2)] for i in range(n, int(3 * n / 2) + 1)] +
+                               [[i, i+int(n/2), i+int(n/2) + 1] for i in range(n, int(3 * n / 2))])
+        tri = mtri.Triangulation(x, y, triangles)
+        return tri, z
+
+    def plot_missile(self, ax, c='r'):
+        tri, z = self.get_missile_coordinates()
+        ax.plot_trisurf(tri, z, color=c)
 
 
 def get_minimal_penetration_velocity(m, A, d, theta, b, n):
@@ -128,18 +178,24 @@ def sdf(theta):
 
 
 if __name__ == '__main__':
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
     origin = np.array([0, -0.3, 1])
     N = 1000e4
 
     acc = 50
-    explosion = Explosion(origin, 4 * np.pi, N, np.array([0, 1, 0]),
+    explosion = Explosion(origin, 4 * np.pi, N, np.array([0.3, 1, 0]),
                           sdf, lambda x: 10)
     m = Missile(np.array([0, 0, 1]), np.array([-1, 0, 0]), 2, 0.3, 1)
+    m.plot_missile(ax)
+    explosion.plot_explosion(ax)
+    ax.set_xlim(-10, 10)
+    ax.set_ylim(-10, 10)
+    ax.set_zlim(-10, 10)
+    plt.show()
     vertices = m.get_projection_coordinates(explosion)['warhead_coords']
-    print(vertices)
     split_vertices = split_rectangle(vertices, acc, acc)
     dist = explosion.explode_on_split_surface(split_vertices)
     plt.imshow(dist)
     plt.colorbar()
     plt.show()
-    print(np.sum(dist))
