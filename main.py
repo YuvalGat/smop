@@ -1,9 +1,4 @@
-import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-import matplotlib.pyplot as plt
-import matplotlib.tri as mtri
-from numba import njit
+from utils import *
 
 """
 a ---- c
@@ -12,71 +7,6 @@ b ---- d
 """
 
 poisson = np.random.poisson
-
-
-def normalize(v):
-    if not any(v):
-        return v
-    else:
-        return v / np.linalg.norm(v)
-
-
-def perpendicular_vector(v):
-    if v[1] == 0 and v[2] == 0:
-        if v[0] == 0:
-            raise ValueError('zero vector')
-        else:
-            return np.cross(v, [0, 1, 0])
-    return np.cross(v, [1, 0, 0])
-
-
-# @njit
-def get_solid_angle_by_triangular_surface(a, b, c):
-    triple_product = np.linalg.det(np.dstack([a, b, c]))[0]
-    a_size = np.linalg.norm(a)
-    b_size = np.linalg.norm(b)
-    c_size = np.linalg.norm(c)
-    tan_half = triple_product / (
-            a_size * b_size * c_size + np.dot(a, b) * c_size + np.dot(a, c) * b_size + np.dot(b, c) * a_size)
-    omega = 2 * np.arctan(tan_half)
-
-    return np.abs(omega)
-
-
-def get_poisson_parameter_on_rectangle(origin, vertices, explosion_fissure, shrapnel_count):
-    """
-
-    :param origin: Origin of the explosion.
-    :type origin: np.ndarray
-    :param vertices: Rectangle vertices.
-    :type vertices: [np.ndarray]
-    :param explosion_fissure: Solid angle corresponding to the explosion.
-    :type explosion_fissure: float
-    :param shrapnel_count: The number of shrapnels in the explosion.
-    :type shrapnel_count: int
-    :return: Corresponding lambda.
-    """
-    a, b, c, d = [v - origin for v in vertices]
-    solid_angle = get_solid_angle_by_triangular_surface(a, b, c) + get_solid_angle_by_triangular_surface(b, c, d)
-    lam = shrapnel_count * solid_angle / explosion_fissure
-
-    return lam
-
-
-def split_rectangle(vertices, w, h):
-    a, b, c, d = vertices
-    x_split = np.linspace(a, c, w + 1)
-    y_split = np.linspace(a, b, h + 1)
-    split_vertices = []
-    for i in range(w):
-        row = []
-        for j in range(h):
-            sub_vertices = [x_split[i] + y_split[j] - a, x_split[i] + y_split[j + 1] - a,
-                            x_split[i + 1] + y_split[j] - a, x_split[i + 1] + y_split[j + 1] - a]
-            row.append(sub_vertices)
-        split_vertices.append(row)
-
-    return split_vertices
 
 
 class Explosion:
@@ -122,8 +52,7 @@ class Missile:
         c = self.warhead_center
         v = explosion.origin - c
         u = self.direction
-        perp = normalize(v - np.dot(v, u) * u)
-        p = np.cross(perp, u) * self.warhead_radius
+        p = np.cross(normalize(perpendicular_component(v, u)), u) * self.warhead_radius
         l = u * self.warhead_length / 2
         return {'warhead_coords': [c + p + l, c - p + l, c + p - l, c - p - l],
                 'homing_head_coords': [c + p + l, c - p + l, c + l + u * self.homing_head_length]}
