@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.tri as mtri
-from numba import njit
-# 
+from numba import njit, jit
+
 
 def normalize(v):
     if not any(v):
@@ -89,10 +89,10 @@ def get_hit_location(e, m, d, r):
     """
     p_e = perpendicular_component(e, d)
     p_m = perpendicular_component(m, d)
-    a = np.linalg.norm(p_m)**2
-    b = np.dot(p_e, p_m)**2
-    c = np.linalg.norm(p_e - p_m)**2
-    x = (a - b + ((a - b)**2 + (r**2 - a)*c)**0.5) / c
+    a = np.linalg.norm(p_m) ** 2
+    b = np.dot(p_e, p_m) ** 2
+    c = np.linalg.norm(p_e - p_m) ** 2
+    x = (a - b + ((a - b) ** 2 + (r ** 2 - a) * c) ** 0.5) / c
     return x * e + (1 - x) * m
 
 

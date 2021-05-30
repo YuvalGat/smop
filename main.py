@@ -1,3 +1,6 @@
+from tqdm import tqdm, trange
+from numba import jit
+
 from utils import *
 import pandas as pd
 
@@ -146,10 +149,9 @@ def svf(theta):
 if __name__ == '__main__':
     SHOW_3D = True
     fig = plt.figure()
-    origin = np.array([0, -0.3, 1])
 
-    acc = 50
-    explosion = Explosion(np.array([2, 1, 5]), 4 * np.pi, np.array([-1, -1, 0]),
+    acc = 30
+    explosion = Explosion(np.array([1, 1, 1]), 4 * np.pi, np.array([0, -1, 0]),
                           sdf, svf)
     m = Missile(np.array([0, 0, 1]), np.array([0, -1, 0]), 2, 0.3, 1)
     if SHOW_3D:
@@ -163,10 +165,6 @@ if __name__ == '__main__':
     vertices = m.get_projection_coordinates(explosion)['warhead_coords']
     split_vertices = split_rectangle(vertices, acc, acc)
     hit_dist, vel, cosangles, distances = explosion.explode_on_split_surface(split_vertices, m)
-    plt.imshow(hit_dist)
-    plt.title('Hit distribution')
-    plt.colorbar()
-    plt.show()
     plt.imshow(vel)
     plt.title('Hit velocities')
     plt.colorbar()
@@ -177,6 +175,14 @@ if __name__ == '__main__':
     plt.show()
     plt.imshow(distances)
     plt.title('Distances')
+    plt.colorbar()
+    plt.show()
+    RUNS = 100
+    for i in trange(RUNS - 1):
+        hit_dist = np.add(hit_dist, explosion.explode_on_split_surface(split_vertices, m)[0])
+    hit_dist /= RUNS
+    plt.imshow(hit_dist)
+    plt.title('Hit distribution')
     plt.colorbar()
     plt.show()
     # e = np.array([0, 5, 3])
