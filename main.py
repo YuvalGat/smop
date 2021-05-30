@@ -144,22 +144,22 @@ def svf(theta):
 
 
 if __name__ == '__main__':
-    # for i in range(180 // 5):
-    #     print(sdf(5 * i * np.pi / 180))
+    SHOW_3D = True
     fig = plt.figure()
-    # ax = plt.axes(projection='3d')
     origin = np.array([0, -0.3, 1])
 
     acc = 50
-    explosion = Explosion(np.array([2, 1, 2]), 4 * np.pi, np.array([-1, 0, 0]),
+    explosion = Explosion(np.array([2, 1, 5]), 4 * np.pi, np.array([-1, -1, 0]),
                           sdf, svf)
-    m = Missile(np.array([0, 0, 1]), np.array([-1, 0, 0]), 2, 0.3, 1)
-    # m.plot_missile(ax)
-    # explosion.plot_explosion(ax)
-    # ax.set_xlim(-10, 10)
-    # ax.set_ylim(-10, 10)
-    # ax.set_zlim(-10, 10)
-    # plt.show()
+    m = Missile(np.array([0, 0, 1]), np.array([0, -1, 0]), 2, 0.3, 1)
+    if SHOW_3D:
+        ax = plt.axes(projection='3d')
+        m.plot_missile(ax)
+        explosion.plot_explosion(ax)
+        ax.set_xlim(-10, 10)
+        ax.set_ylim(-10, 10)
+        ax.set_zlim(-10, 10)
+        plt.show()
     vertices = m.get_projection_coordinates(explosion)['warhead_coords']
     split_vertices = split_rectangle(vertices, acc, acc)
     hit_dist, vel, cosangles, distances = explosion.explode_on_split_surface(split_vertices, m)
