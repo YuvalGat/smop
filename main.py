@@ -40,9 +40,13 @@ class Explosion:
         return theta
 
     def explode_on_split_surface(self, split_vertices, missile):
-        dist = [[self.explode_on(v, missile)[0] for v in row] for row in split_vertices]
-        dist = np.rot90(dist)
-        return dist
+        all_data = np.array([[np.array(self.explode_on(v, missile)) for v in row] for row in split_vertices])
+        hit_dist, vel, cosangles, distances = all_data[:, :, 0], all_data[:, :, 1], all_data[:, :, 2], all_data[:, :, 3]
+        hit_dist = np.rot90(hit_dist)
+        vel = np.rot90(vel)
+        cosangles = np.rot90(cosangles)
+        distances = np.rot90(distances)
+        return hit_dist, vel, cosangles, distances
 
     def plot_explosion(self, ax):
         explosion_missile = Missile(self.origin - self.direction, self.direction, 0.7, 0.2, 0.3)
@@ -132,35 +136,47 @@ def get_penetration_velocity(vs, A, d, m, theta, C, alpha, beta, gamma, lam):
 
 
 def sdf(theta):
-    # print(180 / np.pi * theta)
-    # if np.pi / 6 < theta < np.pi / 4:
-    #     return 1e6
-    # else:
-    #     return 0
     return 4 * np.pi * DENSITIES[np.argmax(ANGLES >= (180 / np.pi * theta))]
+
+
+def svf(theta):
+    return VELOCITIES[np.argmax(ANGLES >= (180 / np.pi * theta))]
 
 
 if __name__ == '__main__':
     # for i in range(180 // 5):
     #     print(sdf(5 * i * np.pi / 180))
     fig = plt.figure()
-    ax = plt.axes(projection='3d')
+    # ax = plt.axes(projection='3d')
     origin = np.array([0, -0.3, 1])
 
     acc = 50
     explosion = Explosion(np.array([2, 1, 2]), 4 * np.pi, np.array([-1, 0, 0]),
-                          sdf, lambda x: 10)
+                          sdf, svf)
     m = Missile(np.array([0, 0, 1]), np.array([-1, 0, 0]), 2, 0.3, 1)
-    m.plot_missile(ax)
-    explosion.plot_explosion(ax)
-    ax.set_xlim(-10, 10)
-    ax.set_ylim(-10, 10)
-    ax.set_zlim(-10, 10)
-    plt.show()
+    # m.plot_missile(ax)
+    # explosion.plot_explosion(ax)
+    # ax.set_xlim(-10, 10)
+    # ax.set_ylim(-10, 10)
+    # ax.set_zlim(-10, 10)
+    # plt.show()
     vertices = m.get_projection_coordinates(explosion)['warhead_coords']
     split_vertices = split_rectangle(vertices, acc, acc)
-    dist = explosion.explode_on_split_surface(split_vertices, m)
-    plt.imshow(dist)
+    hit_dist, vel, cosangles, distances = explosion.explode_on_split_surface(split_vertices, m)
+    plt.imshow(hit_dist)
+    plt.title('Hit distribution')
+    plt.colorbar()
+    plt.show()
+    plt.imshow(vel)
+    plt.title('Hit velocities')
+    plt.colorbar()
+    plt.show()
+    plt.imshow(cosangles)
+    plt.title('Cos of hit angles')
+    plt.colorbar()
+    plt.show()
+    plt.imshow(distances)
+    plt.title('Distances')
     plt.colorbar()
     plt.show()
     # e = np.array([0, 5, 3])
