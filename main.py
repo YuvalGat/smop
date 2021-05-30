@@ -131,22 +131,37 @@ def sdf(theta):
 if __name__ == '__main__':
     fig = plt.figure()
     ax = plt.axes(projection='3d')
-    origin = np.array([0, -0.3, 1])
-    N = 1000e4
-
-    acc = 50
-    explosion = Explosion(origin, 4 * np.pi, N, np.array([0.3, 1, 0]),
-                          sdf, lambda x: 10)
-    m = Missile(np.array([0, 0, 1]), np.array([-1, 0, 0]), 2, 0.3, 1)
-    m.plot_missile(ax)
-    explosion.plot_explosion(ax)
-    ax.set_xlim(-10, 10)
-    ax.set_ylim(-10, 10)
-    ax.set_zlim(-10, 10)
-    plt.show()
-    vertices = m.get_projection_coordinates(explosion)['warhead_coords']
-    split_vertices = split_rectangle(vertices, acc, acc)
-    dist = explosion.explode_on_split_surface(split_vertices)
-    plt.imshow(dist)
-    plt.colorbar()
+    # origin = np.array([0, -0.3, 1])
+    # N = 1000e4
+    #
+    # acc = 50
+    # explosion = Explosion(origin, 4 * np.pi, N, np.array([0.3, 1, 0]),
+    #                       sdf, lambda x: 10)
+    # m = Missile(np.array([0, 0, 1]), np.array([-1, 0, 0]), 2, 0.3, 1)
+    # m.plot_missile(ax)
+    # explosion.plot_explosion(ax)
+    # ax.set_xlim(-10, 10)
+    # ax.set_ylim(-10, 10)
+    # ax.set_zlim(-10, 10)
+    # plt.show()
+    # vertices = m.get_projection_coordinates(explosion)['warhead_coords']
+    # split_vertices = split_rectangle(vertices, acc, acc)
+    # dist = explosion.explode_on_split_surface(split_vertices)
+    # plt.imshow(dist)
+    # plt.colorbar()
+    # plt.show()
+    e = np.array([0, 5, 3])
+    m = np.array([1, -1, 0])
+    d = np.array([0, 1, 0])
+    r = 2
+    h = get_hit_location(e, m, d, r)
+    n = h + normalize(perpendicular_component(get_hit_location(e, m, d, r), d))
+    M = Missile(np.array([0, 0, 0]), d, 5, 2, 2)
+    ax.scatter(e[0], e[1], e[2], c='k')
+    ax.scatter(m[0], m[1], m[2], c='b')
+    ax.scatter(h[0], h[1], h[2], c='m', s=50)
+    ax.scatter(n[0], n[1], n[2], c='r')
+    print(np.arccos(get_hit_angle_cos(e, m, d, r))*180/np.pi)
+    #M.plot_missile(ax)
+    ax.set_xlabel('x')
     plt.show()

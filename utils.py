@@ -86,11 +86,11 @@ def get_hit_location(e, m, d, r):
     :param r: the radius of the missile
     :return:
     """
-    e = perpendicular_component(e, d)
-    m = perpendicular_component(m, d)
-    a = np.linalg.norm(m)**2
-    b = np.dot(e, m)**2
-    c = np.linalg.norm(e - m)**2
+    p_e = perpendicular_component(e, d)
+    p_m = perpendicular_component(m, d)
+    a = np.linalg.norm(p_m)**2
+    b = np.dot(p_e, p_m)**2
+    c = np.linalg.norm(p_e - p_m)**2
     x = (a - b + ((a - b)**2 + (r**2 - a)*c)**0.5) / c
     return x * e + (1 - x) * m
 
@@ -103,18 +103,24 @@ def get_hit_angle_cos(e, m, d, r):
     :param r: the radius of the missile
     :return:
     """
-    return np.dot(normalize(get_hit_location(e, m, d, r)), normalize(e - m))
+    d = normalize(d)
+    return np.dot(normalize(perpendicular_component(get_hit_location(e, m, d, r), d)), normalize(e - m))
 
 
 if __name__ == "__main__":
-    e = np.array([2, 0, 5])
-    m = np.array([0, 2, -1])
-    d = np.array([0, 0, 1])
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    e = np.array([-5, 0, 3])
+    m = np.array([1, 1, 0])
+    d = np.array([1, 0, 0])
     r = 2
     h = get_hit_location(e, m, d, r)
-    print(h)
-    plt.plot(e[1], e[0], 'k.')
-    plt.plot(m[1], m[0], 'k.')
-    plt.plot(h[1], h[0], 'r.')
-    plt.plot(r * np.cos(np.arange(0, 2*np.pi, 0.01)), r * np.sin(np.arange(0, 2*np.pi, 0.01)), 'm')
+    ax.scatter(e[1], e[0], e[2], c='k')
+    ax.scatter(m[1], m[0], m[2], c='b')
+    ax.scatter(h[1], h[0], h[2], c='m')
+    # print(np.arccos(get_hit_angle_cos(e, m, d, r)) * 180 / np.pi)
+    # plt.plot(e[1], e[0], 'k.')
+    # plt.plot(m[1], m[0], 'k.')
+    # plt.plot(h[1], h[0], 'r.')
+    # plt.plot(r * np.cos(np.arange(0, 2*np.pi, 0.01)), r * np.sin(np.arange(0, 2*np.pi, 0.01)), 'm')
     plt.show()
