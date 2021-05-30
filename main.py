@@ -176,8 +176,9 @@ def get_total_energy_deterministic(vel, cosangles, distances, lams):
     vels_hit = get_velocity_after_flight(vel, CD, DENSITY_AIR, SHRAPNEL_DENSITY, BODY_CONSTANT, MASS, distances)
     vels_after_penetration = get_penetration_velocity(vels_hit, CUT_AREA, THICKNESS, MASS, cosangles, C, ALPHA, BETA,
                                                       GAMMA, LAMBDA)
-    plot_graph(vels_hit, 'VELS BEFORE')
-    plot_graph(vels_after_penetration, 'VELS AFTER')
+    if DISPLAY_GRAPHS:
+        plot_graph(vels_hit, 'VELS BEFORE')
+        plot_graph(vels_after_penetration, 'VELS AFTER')
     return 0.5 * MASS * np.sum(lams * np.power(vels_after_penetration, 2))
 
 
@@ -197,30 +198,32 @@ if __name__ == '__main__':
     CD = 0.9
 
     SHOW_3D = True
+    DISPLAY_GRAPHS = True
     fig = plt.figure()
     acc = 50
-    explosion = Explosion(np.array([0.5, 1, 1]), 4 * np.pi, np.array([0, -1, 0]),
+    explosion = Explosion(np.array([10, 1, 1]), 4 * np.pi, np.array([-1, -1, 0]),
                           sdf, svf)
     m = Missile(np.array([0, 0, 1]), np.array([0, -1, 0]), 2, 0.3, 1)
-    if SHOW_3D:
-        ax = plt.axes(projection='3d')
-        m.plot_missile(ax)
-        explosion.plot_explosion(ax)
-        ax.set_xlim(-10, 10)
-        ax.set_ylim(-10, 10)
-        ax.set_zlim(-10, 10)
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
-        plt.show()
     vertices = m.get_projection_coordinates(explosion)['warhead_coords']
     split_vertices = split_rectangle(vertices, acc, acc)
     hit_dist, vel, cosangles, distances, lams = explosion.explode_on_split_surface(split_vertices, m)
-    plot_graph(hit_dist, 'Hit distribution')
-    plot_graph(vel, 'Hit velocities')
-    plot_graph(cosangles, 'Cos of hit angles')
-    plot_graph(distances, 'Distances')
-    plot_graph(lams, 'Lambdas')
+    if DISPLAY_GRAPHS:
+        if SHOW_3D:
+            ax = plt.axes(projection='3d')
+            m.plot_missile(ax)
+            explosion.plot_explosion(ax)
+            ax.set_xlim(-10, 10)
+            ax.set_ylim(-10, 10)
+            ax.set_zlim(-10, 10)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_zlabel('z')
+            plt.show()
+        plot_graph(hit_dist, 'Hit distribution')
+        plot_graph(vel, 'Hit velocities')
+        plot_graph(cosangles, 'Cos of hit angles')
+        plot_graph(distances, 'Distances')
+        plot_graph(lams, 'Lambdas')
     print(get_total_energy_penetrated(hit_dist, vel, cosangles, distances))
     print(get_total_energy_deterministic(vel, cosangles, distances, lams))
     # e = np.array([0, 5, 3])
