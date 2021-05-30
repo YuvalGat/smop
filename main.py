@@ -18,11 +18,17 @@ class Explosion:
         self.sdf = sdf  # Shrapnel density function
         self.svf = svf  # Shrapnel velocity function
 
-    def explode_on(self, vertices):
+    def explode_on(self, vertices, missile):
         theta = self.get_angle_off_vertex(vertices[0])
         lam = get_poisson_parameter_on_rectangle(self.origin, vertices, self.fissure, self.shrapnel_count) * self.sdf(
             theta)
-        return poisson(lam), self.svf(theta)
+        rel_origin = self.origin - missile.warhead_center
+        rel_hit = vertices[0] - missile.warhead_center
+        radius = missile.warhead_radius
+        direction = missile.direction
+        rel_real_hit = get_hit_location(rel_origin, rel_hit, direction, radius)
+        return poisson(lam), self.svf(theta), get_hit_angle_cos(rel_origin, rel_hit, direction, radius), np.linalg.norm(
+            rel_origin - rel_real_hit)
 
     def get_angle_off_vertex(self, vertex):
         theta = np.arcsin(np.dot(vertex - self.origin, self.direction) / np.linalg.norm(vertex - self.origin))
@@ -30,8 +36,8 @@ class Explosion:
             theta += np.pi
         return theta
 
-    def explode_on_split_surface(self, split_vertices):
-        dist = [[self.explode_on(v)[0] for v in row] for row in split_vertices]
+    def explode_on_split_surface(self, split_vertices, missile):
+        dist = [[self.explode_on(v, missile)[0] for v in row] for row in split_vertices]
         dist = np.rot90(dist)
         return dist
 
@@ -161,7 +167,7 @@ if __name__ == '__main__':
     ax.scatter(m[0], m[1], m[2], c='b')
     ax.scatter(h[0], h[1], h[2], c='m', s=50)
     ax.scatter(n[0], n[1], n[2], c='r')
-    print(np.arccos(get_hit_angle_cos(e, m, d, r))*180/np.pi)
-    #M.plot_missile(ax)
+    print(np.arccos(get_hit_angle_cos(e, m, d, r)) * 180 / np.pi)
+    # M.plot_missile(ax)
     ax.set_xlabel('x')
     plt.show()
