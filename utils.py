@@ -108,6 +108,12 @@ def get_hit_angle_cos(e, m, d, r):
     return np.dot(normalize(perpendicular_component(get_hit_location(e, m, d, r), d)), normalize(e - m))
 
 
+def plot_graph(matrix, title):
+    plt.imshow(matrix)
+    plt.title(title)
+    plt.colorbar()
+    plt.show()
+
 if __name__ == "__main__":
     fig = plt.figure()
     ax = plt.axes(projection='3d')
