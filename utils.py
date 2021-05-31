@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import poisson
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.tri as mtri
 from numba import jit
+
+poisson = np.random.poisson
 
 
 @jit(nopython=True)
@@ -28,8 +29,9 @@ def perpendicular_component(v, d):
     return v - np.dot(v, d) * d
 
 
+@jit(nopython=True)
 def get_solid_angle_by_triangular_surface(a, b, c):
-    triple_product = np.linalg.det(np.dstack([a, b, c]))[0]
+    triple_product = np.dot(a, np.cross(b, c))
     a_size = np.linalg.norm(a)
     b_size = np.linalg.norm(b)
     c_size = np.linalg.norm(c)
@@ -38,26 +40,6 @@ def get_solid_angle_by_triangular_surface(a, b, c):
     omega = 2 * np.arctan(tan_half)
 
     return np.abs(omega)
-
-
-def get_poisson_parameter_on_rectangle(origin, vertices, explosion_fissure, shrapnel_count):
-    """
-
-    :param origin: Origin of the explosion.
-    :type origin: np.ndarray
-    :param vertices: Rectangle vertices.
-    :type vertices: [np.ndarray]
-    :param explosion_fissure: Solid angle corresponding to the explosion.
-    :type explosion_fissure: float
-    :param shrapnel_count: The number of shrapnels in the explosion.
-    :type shrapnel_count: int
-    :return: Corresponding lambda.
-    """
-    a, b, c, d = [v - origin for v in vertices]
-    solid_angle = get_solid_angle_by_triangular_surface(a, b, c) + get_solid_angle_by_triangular_surface(b, c, d)
-    lam = shrapnel_count * solid_angle / explosion_fissure
-
-    return lam
 
 
 def split_rectangle(vertices, w, h):
@@ -76,6 +58,7 @@ def split_rectangle(vertices, w, h):
     return split_vertices
 
 
+@jit(nopython=True)
 def get_hit_location(e, m, d, r):
     """
     get the point where the line between e and m intersects with the cylinder with radius r and
@@ -88,13 +71,14 @@ def get_hit_location(e, m, d, r):
     """
     p_e = perpendicular_component(e, d)
     p_m = perpendicular_component(m, d)
-    a = np.inner(p_m, p_m)
+    a = np.dot(p_m, p_m)
     b = np.dot(p_e, p_m) ** 2
-    c = np.inner(p_e - p_m, p_e - p_m)
+    c = np.dot(p_e - p_m, p_e - p_m)
     x = (a - b + ((a - b) ** 2 + (r ** 2 - a) * c) ** 0.5) / c
     return x * e + (1 - x) * m
 
 
+@jit(nopython=True)
 def get_hit_angle_cos(e, m, d, r):
     """
     :param e: the location of the explosion
@@ -125,6 +109,7 @@ def get_minimal_penetration_velocity(m, A, d, theta, b, n):
     return b / np.sqrt(m) * np.sqrt(np.power(np.power(A, 1.5) * (d / (np.sqrt(A) * np.cos(theta))), n))
 
 
+@jit(nopython=True)
 def get_penetration_velocity(vs, A, d, m, costheta, C, alpha, beta, gamma, lam):
     """
     Thor formula
@@ -145,8 +130,33 @@ def get_penetration_velocity(vs, A, d, m, costheta, C, alpha, beta, gamma, lam):
             costheta, gamma)) / 3.281, 0)
 
 
+@jit(nopython=True)
 def get_velocity_after_flight(v0, Cd, rho, rho_f, k_s, m, x):
     return v0 * np.exp(-Cd * rho / (2 * np.power(np.power(rho_f * k_s, 2) * m, 1 / 3)) * x)
+
+
+@jit(nopython=True)
+def get_angle_off_vertex(origin, direction, vertex):
+    theta = np.arccos(np.dot(vertex - origin, direction) / np.linalg.norm(vertex - origin))
+    if theta < 0:
+        theta += np.pi
+    return theta
+
+
+@jit(nopython=True)
+def explode_on(origin, vertices, fissure, warhead_center, warhead_radius, missile_direction, sdf_theta, svf_theta,
+               lam=None):
+    if lam is None:
+        a, b, c, d = [v - origin for v in vertices]
+        solid_angle = get_solid_angle_by_triangular_surface(a, b, c) + get_solid_angle_by_triangular_surface(b, c, d)
+        lam = sdf_theta * solid_angle / fissure
+    rel_origin = origin - warhead_center
+    rel_hit = vertices[0] - warhead_center
+    radius = warhead_radius
+    direction = missile_direction
+    rel_real_hit = get_hit_location(rel_origin, rel_hit, direction, radius)
+    return poisson(lam), svf_theta, get_hit_angle_cos(rel_origin, rel_hit, direction, radius), np.linalg.norm(
+        rel_origin - rel_real_hit), lam
 
 
 if __name__ == "__main__":

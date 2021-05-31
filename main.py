@@ -9,7 +9,6 @@ a ---- c
 b ---- d
 """
 
-poisson = np.random.poisson
 df = pd.read_csv('data.csv')
 ANGLES = np.array(df['angle'])
 DENSITIES = np.array(df['density'])
@@ -25,22 +24,9 @@ class Explosion:
         self.svf = svf  # Shrapnel velocity function
 
     def explode_on(self, vertices, missile, lam=None):
-        theta = self.get_angle_off_vertex(vertices[0])
-        if lam is None:
-            lam = get_poisson_parameter_on_rectangle(self.origin, vertices, self.fissure, self.sdf(theta))
-        rel_origin = self.origin - missile.warhead_center
-        rel_hit = vertices[0] - missile.warhead_center
-        radius = missile.warhead_radius
-        direction = missile.direction
-        rel_real_hit = get_hit_location(rel_origin, rel_hit, direction, radius)
-        return poisson(lam), self.svf(theta), get_hit_angle_cos(rel_origin, rel_hit, direction, radius), np.linalg.norm(
-            rel_origin - rel_real_hit), lam
-
-    def get_angle_off_vertex(self, vertex):
-        theta = np.arccos(np.dot(vertex - self.origin, self.direction) / np.linalg.norm(vertex - self.origin))
-        if theta < 0:
-            theta += np.pi
-        return theta
+        theta = get_angle_off_vertex(self.origin, self.direction, vertices[0])
+        return explode_on(self.origin, np.array(vertices), self.fissure, missile.warhead_center,
+                          missile.warhead_radius, missile.direction, self.sdf(theta), self.svf(theta), lam)
 
     def explode_on_split_surface(self, split_vertices, missile, lams=None):
         if lams is None:
@@ -48,8 +34,8 @@ class Explosion:
                 [[np.array(self.explode_on(v, missile)) for v in row] for row in split_vertices])
         else:
             all_data = np.array(
-            [[np.array(self.explode_on(v, missile, lams[j][i])) for i, v in enumerate(row)] for j, row in
-             enumerate(split_vertices)])
+                [[np.array(self.explode_on(v, missile, lams[j][i])) for i, v in enumerate(row)] for j, row in
+                 enumerate(split_vertices)])
         hit_dist, vel, cosangles, distances, lams = all_data[:, :, 0], all_data[:, :, 1], all_data[:, :, 2], \
                                                     all_data[:, :, 3], all_data[:, :, 4]
         hit_dist = np.rot90(hit_dist)
@@ -115,14 +101,17 @@ class Missile:
         ax.plot_trisurf(tri, z, color=c)
 
 
+@jit(nopython=True)
 def sdf(theta):
     return 4 * np.pi * DENSITIES[np.argmax(ANGLES >= (180 / np.pi * theta))]
 
 
+@jit(nopython=True)
 def svf(theta):
     return VELOCITIES[np.argmax(ANGLES >= (180 / np.pi * theta))]
 
 
+@jit(nopython=True)
 def get_total_energy_penetrated(hit_dist, vel, cosangles, distances):
     total_energy = 0
     for i, row in enumerate(hit_dist):
@@ -170,7 +159,7 @@ if __name__ == '__main__':
     acc = 50
     explosion = Explosion(np.array([2, 0, 0]), 4 * np.pi, np.array([0, 1, 0]),
                           sdf, svf)
-    m = Missile(np.array([0, 0, 1]), np.array([0, -1, 0]), 2, 0.3, 1)
+    m = Missile(np.array([0, 0, 0]), np.array([0, -1, 0]), 2, 0.3, 1)
     vertices = m.get_projection_coordinates(explosion)['warhead_coords']
     split_vertices = split_rectangle(vertices, acc, acc)
     Es = []
@@ -183,7 +172,6 @@ if __name__ == '__main__':
     plt.show()
     print(np.mean(Es))
     print(Es)
-    print(E)
     print(get_total_energy_deterministic(vel, cosangles, distances, lams))
     if DISPLAY_GRAPHS:
         if SHOW_3D:
