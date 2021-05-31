@@ -108,41 +108,6 @@ class Missile:
         ax.plot_trisurf(tri, z, color=c)
 
 
-def get_minimal_penetration_velocity(m, A, d, theta, b, n):
-    """
-    Ricckihazzi formula
-    :param m: Mass of fragment in gram
-    :param A: Cross-area of fragment in mm^2
-    :param d: Penetrated surface thickness in mm
-    :param theta: Penetration angle
-    :return: Minimal velocity required to penetrate surface
-    """
-    return b / np.sqrt(m) * np.sqrt(np.power(np.power(A, 1.5) * (d / (np.sqrt(A) * np.cos(theta))), n))
-
-
-def get_penetration_velocity(vs, A, d, m, costheta, C, alpha, beta, gamma, lam):
-    """
-    Thor formula
-    :param vs: Entry velocity in m/s
-    :param A: Cross-area of fragment in m^2
-    :param d: Penetrated surface thickness in m
-    :param m: Mass of fragment in kg
-    :param costheta: Cosine of penetration angle
-    :return: Velocity of exiting fragment in m/s
-    """
-    vs_fs = vs * 3.281
-    m_grain = m * 15432
-    A_in2 = A * 1550
-    d_in = d * 39.37
-    return np.maximum((vs_fs - np.power(10, C) * np.power(A_in2 * d_in, alpha) * np.power(m_grain, beta) * np.power(vs_fs,
-                                                                                                         lam) / np.power(
-        costheta, gamma)) / 3.281, 0)
-
-
-def get_velocity_after_flight(v0, Cd, rho, rho_f, k_s, m, x):
-    return v0 * np.exp(-Cd * rho / (2 * np.power(np.power(rho_f * k_s, 2) * m, 1 / 3)) * x)
-
-
 def sdf(theta):
     return 4 * np.pi * DENSITIES[np.argmax(ANGLES >= (180 / np.pi * theta))]
 
@@ -201,12 +166,22 @@ if __name__ == '__main__':
     DISPLAY_GRAPHS = True
     fig = plt.figure()
     acc = 50
-    explosion = Explosion(np.array([10, 1, 1]), 4 * np.pi, np.array([-1, -1, 0]),
+    explosion = Explosion(np.array([2, 0, 0]), 4 * np.pi, np.array([0, 1, 0]),
                           sdf, svf)
     m = Missile(np.array([0, 0, 1]), np.array([0, -1, 0]), 2, 0.3, 1)
     vertices = m.get_projection_coordinates(explosion)['warhead_coords']
     split_vertices = split_rectangle(vertices, acc, acc)
+    Es = []
     hit_dist, vel, cosangles, distances, lams = explosion.explode_on_split_surface(split_vertices, m)
+    # for i in trange(10000):
+    #     hit_dist, vel, cosangles, distances, lams = explosion.explode_on_split_surface(split_vertices, m)
+    #     E = get_total_energy_penetrated(hit_dist, vel, cosangles, distances)
+    #     Es.append(E)
+    # plt.hist(Es)
+    # plt.show()
+    # print(np.mean(Es))
+    # print(Es)
+    print(get_total_energy_deterministic(vel, cosangles, distances, lams))
     if DISPLAY_GRAPHS:
         if SHOW_3D:
             ax = plt.axes(projection='3d')
@@ -224,8 +199,6 @@ if __name__ == '__main__':
         plot_graph(cosangles, 'Cos of hit angles')
         plot_graph(distances, 'Distances')
         plot_graph(lams, 'Lambdas')
-    print(get_total_energy_penetrated(hit_dist, vel, cosangles, distances))
-    print(get_total_energy_deterministic(vel, cosangles, distances, lams))
     # e = np.array([0, 5, 3])
     # m = np.array([1, -1, 0])
     # d = np.array([0, 1, 0])

@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import poisson
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.tri as mtri
 from numba import njit, jit
@@ -113,6 +114,43 @@ def plot_graph(matrix, title):
     plt.title(title)
     plt.colorbar()
     plt.show()
+
+
+def get_minimal_penetration_velocity(m, A, d, theta, b, n):
+    """
+    Ricckihazzi formula
+    :param m: Mass of fragment in gram
+    :param A: Cross-area of fragment in mm^2
+    :param d: Penetrated surface thickness in mm
+    :param theta: Penetration angle
+    :return: Minimal velocity required to penetrate surface
+    """
+    return b / np.sqrt(m) * np.sqrt(np.power(np.power(A, 1.5) * (d / (np.sqrt(A) * np.cos(theta))), n))
+
+
+def get_penetration_velocity(vs, A, d, m, costheta, C, alpha, beta, gamma, lam):
+    """
+    Thor formula
+    :param vs: Entry velocity in m/s
+    :param A: Cross-area of fragment in m^2
+    :param d: Penetrated surface thickness in m
+    :param m: Mass of fragment in kg
+    :param costheta: Cosine of penetration angle
+    :return: Velocity of exiting fragment in m/s
+    """
+    vs_fs = vs * 3.281
+    m_grain = m * 15432
+    A_in2 = A * 1550
+    d_in = d * 39.37
+    return np.maximum(
+        (vs_fs - np.power(10, C) * np.power(A_in2 * d_in, alpha) * np.power(m_grain, beta) * np.power(vs_fs,
+                                                                                                      lam) / np.power(
+            costheta, gamma)) / 3.281, 0)
+
+
+def get_velocity_after_flight(v0, Cd, rho, rho_f, k_s, m, x):
+    return v0 * np.exp(-Cd * rho / (2 * np.power(np.power(rho_f * k_s, 2) * m, 1 / 3)) * x)
+
 
 if __name__ == "__main__":
     fig = plt.figure()
