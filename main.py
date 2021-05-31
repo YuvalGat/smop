@@ -25,9 +25,10 @@ class Explosion:
         self.sdf = sdf  # Shrapnel density function
         self.svf = svf  # Shrapnel velocity function
 
-    def explode_on(self, vertices, missile):
+    def explode_on(self, vertices, missile, lam=None):
         theta = self.get_angle_off_vertex(vertices[0])
-        lam = get_poisson_parameter_on_rectangle(self.origin, vertices, self.fissure, self.sdf(theta))
+        if lam is None:
+            lam = get_poisson_parameter_on_rectangle(self.origin, vertices, self.fissure, self.sdf(theta))
         rel_origin = self.origin - missile.warhead_center
         rel_hit = vertices[0] - missile.warhead_center
         radius = missile.warhead_radius
@@ -42,14 +43,21 @@ class Explosion:
             theta += np.pi
         return theta
 
-    def explode_on_split_surface(self, split_vertices, missile):
-        all_data = np.array([[np.array(self.explode_on(v, missile)) for v in row] for row in split_vertices])
+    def explode_on_split_surface(self, split_vertices, missile, lams=None):
+        if lams is None:
+            all_data = np.array(
+                [[np.array(self.explode_on(v, missile)) for v in row] for row in split_vertices])
+        else:
+            all_data = np.array(
+            [[np.array(self.explode_on(v, missile, lams[j][i])) for i, v in enumerate(row)] for j, row in
+             enumerate(split_vertices)])
         hit_dist, vel, cosangles, distances, lams = all_data[:, :, 0], all_data[:, :, 1], all_data[:, :, 2], \
                                                     all_data[:, :, 3], all_data[:, :, 4]
         hit_dist = np.rot90(hit_dist)
         vel = np.rot90(vel)
         cosangles = np.rot90(cosangles)
         distances = np.rot90(distances)
+        lams = np.rot90(lams)
         return hit_dist, vel, cosangles, distances, lams
 
     def plot_explosion(self, ax):
@@ -116,11 +124,6 @@ def svf(theta):
     return VELOCITIES[np.argmax(ANGLES >= (180 / np.pi * theta))]
 
 
-# RUNS = 1
-# for i in trange(RUNS - 1):
-#     hit_dist = np.add(hit_dist, explosion.explode_on_split_surface(split_vertices, m)[0])
-# hit_dist /= RUNS
-
 def get_total_energy_penetrated(hit_dist, vel, cosangles, distances):
     total_energy = 0
     for i, row in enumerate(hit_dist):
@@ -163,7 +166,7 @@ if __name__ == '__main__':
     CD = 0.9
 
     SHOW_3D = True
-    DISPLAY_GRAPHS = True
+    DISPLAY_GRAPHS = False
     fig = plt.figure()
     acc = 50
     explosion = Explosion(np.array([2, 0, 0]), 4 * np.pi, np.array([0, 1, 0]),
@@ -173,14 +176,15 @@ if __name__ == '__main__':
     split_vertices = split_rectangle(vertices, acc, acc)
     Es = []
     hit_dist, vel, cosangles, distances, lams = explosion.explode_on_split_surface(split_vertices, m)
-    # for i in trange(10000):
-    #     hit_dist, vel, cosangles, distances, lams = explosion.explode_on_split_surface(split_vertices, m)
-    #     E = get_total_energy_penetrated(hit_dist, vel, cosangles, distances)
-    #     Es.append(E)
-    # plt.hist(Es)
-    # plt.show()
-    # print(np.mean(Es))
-    # print(Es)
+    for i in trange(30):
+        hit_dist, vel, cosangles, distances, _ = explosion.explode_on_split_surface(split_vertices, m, lams)
+        E = get_total_energy_penetrated(hit_dist, vel, cosangles, distances)
+        Es.append(E)
+    plt.hist(Es)
+    plt.show()
+    print(np.mean(Es))
+    print(Es)
+    print(E)
     print(get_total_energy_deterministic(vel, cosangles, distances, lams))
     if DISPLAY_GRAPHS:
         if SHOW_3D:
