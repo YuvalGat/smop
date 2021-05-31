@@ -3,16 +3,33 @@ from tqdm import tqdm, trange
 from utils import *
 import pandas as pd
 
+MASS = 0.005
+SHRAPNEL_DENSITY = 19300
+THICKNESS = 0.01
+CUT_AREA = np.pi * np.power(3 * MASS / (4 * np.pi * SHRAPNEL_DENSITY), 2 / 3)
+C = 6.475
+ALPHA = 0.889
+BETA = -0.945
+GAMMA = 1.262
+LAMBDA = 0.019
+DENSITY_AIR = 1.225
+BODY_CONSTANT = 0.752
+CD = 0.9
+
 """
 a ---- c
 |      |
 b ---- d
 """
 
-df = pd.read_csv('data.csv')
-ANGLES = np.array(df['angle'])
-DENSITIES = np.array(df['density'])
-VELOCITIES = np.array(df['velocity'])
+warhead_data = pd.read_csv('data.csv')
+ANGLES = np.array(warhead_data['angle'])
+DENSITIES = np.array(warhead_data['density'])
+VELOCITIES = np.array(warhead_data['velocity'])
+
+
+def f(E):
+    return 2 / np.pi * np.arctan(0.00481 * E)
 
 
 class Explosion:
@@ -135,19 +152,6 @@ def get_total_energy_deterministic(vel, cosangles, distances, lams):
 
 if __name__ == '__main__':
     # This simulates a 5gr ball of tungsten, penetrating tough steel
-    MASS = 0.005
-    SHRAPNEL_DENSITY = 19300
-    THICKNESS = 0.01
-    CUT_AREA = np.pi * np.power(3 * MASS / (4 * np.pi * SHRAPNEL_DENSITY), 2 / 3)
-    C = 6.475
-    ALPHA = 0.889
-    BETA = -0.945
-    GAMMA = 1.262
-    LAMBDA = 0.019
-    DENSITY_AIR = 1.225
-    BODY_CONSTANT = 0.752
-    CD = 0.9
-
     SHOW_3D = True
     DISPLAY_GRAPHS = True
     fig = plt.figure()
@@ -159,7 +163,7 @@ if __name__ == '__main__':
     split_vertices = split_rectangle(vertices, acc, acc)
     Es = []
     hit_dist, vel, cosangles, distances, lams = explosion.explode_on_split_surface(split_vertices, m)
-    for i in trange(200):
+    for i in trange(100):
         hit_dist, vel, cosangles, distances, _ = explosion.explode_on_split_surface(split_vertices, m, lams)
         E = get_total_energy_penetrated(hit_dist, vel, cosangles, distances)
         Es.append(E)
@@ -185,6 +189,7 @@ if __name__ == '__main__':
         plot_graph(cosangles, 'Cos of hit angles')
         plot_graph(distances, 'Distances')
         plot_graph(lams, 'Lambdas')
+
     # e = np.array([0, 5, 3])
     # m = np.array([1, -1, 0])
     # d = np.array([0, 1, 0])
