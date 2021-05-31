@@ -3,14 +3,12 @@ import matplotlib.pyplot as plt
 from scipy.stats import poisson
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.tri as mtri
-from numba import njit, jit
+from numba import jit
 
 
-def normalize(v):
-    if not any(v):
-        return v
-    else:
-        return v / np.linalg.norm(v)
+@jit(nopython=True)
+def normalize(v: np.array([float])):
+    return v / np.linalg.norm(v)
 
 
 def perpendicular_vector(v):
@@ -22,11 +20,11 @@ def perpendicular_vector(v):
     return np.cross(v, [1, 0, 0])
 
 
+@jit(nopython=True)
 def perpendicular_component(v, d):
     """
-    returns the perpendicular component of v in respect to d
+    returns the perpendicular component of v in respect to d, d must be normalized
     """
-    d = normalize(d)
     return v - np.dot(v, d) * d
 
 
@@ -84,7 +82,7 @@ def get_hit_location(e, m, d, r):
     its center is (0, 0, 0) pointing in direction d
     :param e: the location of the explosion
     :param m: the location where the shrapnel hit the missile rectangle
-    :param d: the direction of the missile
+    :param d: the direction of the missile, must be normalized
     :param r: the radius of the missile
     :return:
     """
@@ -101,11 +99,10 @@ def get_hit_angle_cos(e, m, d, r):
     """
     :param e: the location of the explosion
     :param m: the location where the shrapnel hit the missile rectangle
-    :param d: the direction of the missile
+    :param d: the direction of the missile, must be normalized
     :param r: the radius of the missile
     :return:
     """
-    d = normalize(d)
     return np.dot(normalize(perpendicular_component(get_hit_location(e, m, d, r), d)), normalize(e - m))
 
 

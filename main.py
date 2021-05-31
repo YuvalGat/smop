@@ -1,5 +1,4 @@
 from tqdm import tqdm, trange
-from numba import jit
 
 from utils import *
 import pandas as pd
@@ -19,9 +18,9 @@ VELOCITIES = np.array(df['velocity'])
 
 class Explosion:
     def __init__(self, origin, fissure, direction, sdf, svf):
-        self.origin = origin
+        self.origin = origin.astype(float)
         self.fissure = fissure
-        self.direction = normalize(direction)
+        self.direction = normalize(direction.astype(float))
         self.sdf = sdf  # Shrapnel density function
         self.svf = svf  # Shrapnel velocity function
 
@@ -67,8 +66,8 @@ class Explosion:
 
 class Missile:
     def __init__(self, warhead_center, direction, warhead_length, warhead_radius, homing_head_length):
-        self.warhead_center = warhead_center
-        self.direction = normalize(direction)
+        self.warhead_center = warhead_center.astype(float)
+        self.direction = normalize(direction.astype(float))
         self.warhead_length = warhead_length
         self.warhead_radius = warhead_radius
         self.homing_head_length = homing_head_length
@@ -176,7 +175,7 @@ if __name__ == '__main__':
     split_vertices = split_rectangle(vertices, acc, acc)
     Es = []
     hit_dist, vel, cosangles, distances, lams = explosion.explode_on_split_surface(split_vertices, m)
-    for i in trange(30):
+    for i in trange(100):
         hit_dist, vel, cosangles, distances, _ = explosion.explode_on_split_surface(split_vertices, m, lams)
         E = get_total_energy_penetrated(hit_dist, vel, cosangles, distances)
         Es.append(E)
