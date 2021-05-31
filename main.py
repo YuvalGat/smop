@@ -34,15 +34,10 @@ class Explosion:
                 [[np.array(self.explode_on(v, missile)) for v in row] for row in split_vertices])
         else:
             all_data = np.array(
-                [[np.array(self.explode_on(v, missile, lams[i][j])) for i, v in enumerate(row)] for j, row in
+                [[np.array(self.explode_on(v, missile, lams[j][i])) for i, v in enumerate(row)] for j, row in
                  enumerate(split_vertices)])
         hit_dist, vel, cosangles, distances, lams = all_data[:, :, 0], all_data[:, :, 1], all_data[:, :, 2], \
                                                     all_data[:, :, 3], all_data[:, :, 4]
-        hit_dist = np.rot90(hit_dist)
-        vel = np.rot90(vel)
-        cosangles = np.rot90(cosangles)
-        distances = np.rot90(distances)
-        lams = np.rot90(lams)
         return hit_dist, vel, cosangles, distances, lams
 
     def plot_explosion(self, ax):
@@ -154,17 +149,17 @@ if __name__ == '__main__':
     CD = 0.9
 
     SHOW_3D = True
-    DISPLAY_GRAPHS = False
+    DISPLAY_GRAPHS = True
     fig = plt.figure()
     acc = 50
     explosion = Explosion(np.array([2, 0, 0]), 4 * np.pi, np.array([0, 1, 0]),
                           sdf, svf)
-    m = Missile(np.array([0, 0, 1]), np.array([0, -1, 0]), 2, 0.3, 1)
+    m = Missile(np.array([0, 0, 1]), np.array([-1, -1, 0]), 2, 0.3, 1)
     vertices = m.get_projection_coordinates(explosion)['warhead_coords']
     split_vertices = split_rectangle(vertices, acc, acc)
     Es = []
     hit_dist, vel, cosangles, distances, lams = explosion.explode_on_split_surface(split_vertices, m)
-    for i in trange(1000):
+    for i in trange(200):
         hit_dist, vel, cosangles, distances, _ = explosion.explode_on_split_surface(split_vertices, m, lams)
         E = get_total_energy_penetrated(hit_dist, vel, cosangles, distances)
         Es.append(E)

@@ -91,7 +91,8 @@ def get_hit_angle_cos(e, m, d, r):
 
 
 def plot_graph(matrix, title):
-    plt.imshow(matrix)
+    copy = np.rot90(matrix)
+    plt.imshow(copy)
     plt.title(title)
     plt.colorbar()
     plt.show()
