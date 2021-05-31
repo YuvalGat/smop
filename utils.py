@@ -160,6 +160,10 @@ def explode_on(origin, vertices, fissure, warhead_center, warhead_radius, missil
         rel_origin - rel_real_hit), lam
 
 
+def get_total_probability(lam, energy, f):
+    return 1 - np.power(np.e, (-np.sum(lam*f(energy))))
+
+
 if __name__ == "__main__":
     fig = plt.figure()
     ax = plt.axes(projection='3d')
