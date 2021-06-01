@@ -161,7 +161,7 @@ def explode_on(origin, vertices, fissure, warhead_center, warhead_radius, missil
 
 
 def get_total_probability(lam, energy, f):
-    return 1 - np.power(np.e, (-np.sum(lam*f(energy))))
+    return 1 - np.exp(-np.sum(lam * f(energy)))
 
 
 if __name__ == "__main__":

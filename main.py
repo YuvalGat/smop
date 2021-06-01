@@ -150,28 +150,43 @@ def get_total_energy_deterministic(vel, cosangles, distances, lams):
     return 0.5 * MASS * np.sum(lams * np.power(vels_after_penetration, 2))
 
 
+def get_energy_matrix(vel, distances, cosangles):
+    vels_hit = get_velocity_after_flight(vel, CD, DENSITY_AIR, SHRAPNEL_DENSITY, BODY_CONSTANT, MASS, distances)
+    vels_after_penetration = get_penetration_velocity(vels_hit, CUT_AREA, THICKNESS, MASS, cosangles, C, ALPHA, BETA,
+                                                      GAMMA, LAMBDA)
+    return 0.5 * MASS * np.power(vels_after_penetration, 2)
+
+
+def get_interception_probability(explosion, missile, accuracy):
+    vertices = missile.get_projection_coordinates(explosion)['warhead_coords']
+    split_vertices = split_rectangle(vertices, accuracy, accuracy)
+    _, vel, cosangles, distances, lams = explosion.explode_on_split_surface(split_vertices, m)
+    em = get_energy_matrix(vel, distances, cosangles)
+    return get_total_probability(lams, em, f)
+
+
 if __name__ == '__main__':
     # This simulates a 5gr ball of tungsten, penetrating tough steel
     SHOW_3D = True
-    DISPLAY_GRAPHS = True
+    DISPLAY_GRAPHS = False
     fig = plt.figure()
     acc = 50
-    explosion = Explosion(np.array([2, 0, 0]), 4 * np.pi, np.array([0, 1, 0]),
+    explosion = Explosion(np.array([2, -5, 0]), 4 * np.pi, np.array([0, 1, -1]),
                           sdf, svf)
     m = Missile(np.array([0, 0, 1]), np.array([-1, -1, 0]), 2, 0.3, 1)
     vertices = m.get_projection_coordinates(explosion)['warhead_coords']
     split_vertices = split_rectangle(vertices, acc, acc)
     Es = []
     hit_dist, vel, cosangles, distances, lams = explosion.explode_on_split_surface(split_vertices, m)
-    for i in trange(100):
-        hit_dist, vel, cosangles, distances, _ = explosion.explode_on_split_surface(split_vertices, m, lams)
-        E = get_total_energy_penetrated(hit_dist, vel, cosangles, distances)
-        Es.append(E)
-    plt.hist(Es)
-    plt.show()
-    print(np.mean(Es))
-    print(Es)
-    print(get_total_energy_deterministic(vel, cosangles, distances, lams))
+    # for i in trange(100):
+    #     hit_dist, vel, cosangles, distances, _ = explosion.explode_on_split_surface(split_vertices, m, lams)
+    #     E = get_total_energy_penetrated(hit_dist, vel, cosangles, distances)
+    #     Es.append(E)
+    # plt.hist(Es)
+    # plt.show()
+    # print(np.mean(Es))
+    # print(Es)
+    # print(get_total_energy_deterministic(vel, cosangles, distances, lams))
     if DISPLAY_GRAPHS:
         if SHOW_3D:
             ax = plt.axes(projection='3d')
@@ -185,11 +200,19 @@ if __name__ == '__main__':
             ax.set_zlabel('z')
             plt.show()
         plot_graph(hit_dist, 'Hit distribution')
-        plot_graph(vel, 'Hit velocities')
+        plot_graph(vel, 'Vels upon leaving warhead')
         plot_graph(cosangles, 'Cos of hit angles')
         plot_graph(distances, 'Distances')
         plot_graph(lams, 'Lambdas')
-
+        vels_hit = get_velocity_after_flight(vel, CD, DENSITY_AIR, SHRAPNEL_DENSITY, BODY_CONSTANT, MASS, distances)
+        vels_after_penetration = get_penetration_velocity(vels_hit, CUT_AREA, THICKNESS, MASS, cosangles, C, ALPHA,
+                                                          BETA, GAMMA, LAMBDA)
+        plot_graph(vels_hit, 'Vels when hitting missile')
+        plot_graph(vels_after_penetration, 'Vels after penetration')
+    X_ACC = np.linspace(10, 1000, 50)
+    Y = [get_interception_probability(explosion, m, int(a)) for a in X_ACC]
+    plt.plot(X_ACC, Y)
+    plt.show()
     # e = np.array([0, 5, 3])
     # m = np.array([1, -1, 0])
     # d = np.array([0, 1, 0])
